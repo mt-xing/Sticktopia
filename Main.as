@@ -19,12 +19,15 @@
 		var rightPressed:Boolean = false;
 		var upPressed:Boolean = false;
 		var downPressed:Boolean = false;
+		var attackPressed:Boolean = false;
 		
 		//Jumping Stuff
 		const jumpConstant:Number = -65;
 		var doubleJumpReady:Boolean = false;
 		var upReleasedInAir:Boolean = false;
 		const gravityConstant:Number = 5;
+		
+		var HP:Number = 100;
 		
 		//Speed
 		var xSpeed:Number = 10;
@@ -37,13 +40,17 @@
 		const maxSpeedConstant:Number = 15;
 		const friction:Number = 0.80;
 		
-		var AnimationState:String = "Idle";
 		
-		//var HomeTimer;
-		//var ClearInd;
-		//var ShowInd;
-		//var Comp:LComp = new LComp();
-		//var LevInd:LInd
+		
+		var AnimationState:String = "Idle";
+		var LastWasLeft:Boolean = false;
+		var AnimationTimer:Number = 0;
+		var HomeTimer;
+		
+		//Sprite Arrays
+		var bulletList:Array = new Array();
+		var enemyList:Array = new Array();
+		
 		
 		var CurrLev:int;
 		
@@ -92,6 +99,8 @@
 		//New Level Code - What's called from the timeline
 		public function NewLevel(LevelNum:int, LevelX:int, LevelY:int){
 			
+			HP = 100;
+			
 			stop();
 			trace("Class Code For Level " + LevelNum + " Initiated.");
 			
@@ -105,6 +114,9 @@
 			AnimationState = "Idle";
 			UpdatePlayer();
 			
+			player.Figure.scaleX = 1;
+			
+			
 			scrollX = LevelX;
 			scrollY = LevelY;
 			
@@ -115,9 +127,11 @@
 			
 			//Starting all the event listeners
 			AddEvents();
-			stage.addEventListener(Event.ENTER_FRAME, FrameCode);
+			
 			
 			trace("Event Listeners Initialized");
+			stage.addEventListener(Event.ENTER_FRAME, FrameCode);
+			SpawnEnemies();
 		}
 		
 		public function AddEvents(){
@@ -137,32 +151,104 @@
 		
 		//Key Handlers
 		public function keyDownHandler(e:KeyboardEvent):void{
-			if(e.keyCode == Keyboard.LEFT){
+			if(e.keyCode == Keyboard.A || e.keyCode == Keyboard.LEFT){
 				leftPressed = true;
-			} else if(e.keyCode == Keyboard.RIGHT){
+			} else if(e.keyCode == Keyboard.D || e.keyCode == Keyboard.RIGHT){
 				rightPressed = true;
-			} else if(e.keyCode == Keyboard.UP){
+			} else if(e.keyCode == Keyboard.W || e.keyCode == Keyboard.UP){
 				upPressed = true;
-			} else if(e.keyCode == Keyboard.DOWN){
+			} else if(e.keyCode == Keyboard.S || e.keyCode == Keyboard.DOWN){
 				downPressed = true;
+			} else if(e.keyCode == Keyboard.SPACE){
+			//	trace("Attack");
+				attackPressed = true;
 			}
 		}
 		
 		public function keyUpHandler(e:KeyboardEvent):void{
-			if(e.keyCode == Keyboard.LEFT){
+			if(e.keyCode == Keyboard.A || e.keyCode == Keyboard.LEFT){
 				leftPressed = false;
-			} else if(e.keyCode == Keyboard.RIGHT){
+			} else if(e.keyCode == Keyboard.D || e.keyCode == Keyboard.RIGHT){
 				rightPressed = false;
-			} else if(e.keyCode == Keyboard.UP){
+			} else if(e.keyCode == Keyboard.W || e.keyCode == Keyboard.UP){
 				upPressed = false;
-			} else if(e.keyCode == Keyboard.DOWN){
+			} else if(e.keyCode == Keyboard.S || e.keyCode == Keyboard.DOWN){
 				downPressed = false;
+			} else if(e.keyCode == Keyboard.C){
+				fireBullet();
+			} else if(e.keyCode == Keyboard.SPACE){
+				attackPressed = false;
+			}
+		}
+		
+		
+		
+		function fireBullet():void {
+			var playerDirection:String;
+			if(player.Figure.scaleX < 0){
+				playerDirection = "left";
+			} else if(player.Figure.scaleX > 0){
+				playerDirection = "right";
+			}
+			var bullet:Bullet = new Bullet(player.x - scrollX, player.y - scrollY, playerDirection);
+			back.addChild(bullet);
+			bulletList.push(bullet);
+			bullet.addEventListener(Event.REMOVED, bulletRemoved);
+		}
+		function bulletRemoved(e:Event):void{
+			e.currentTarget.removeEventListener(Event.REMOVED, bulletRemoved);
+			bulletList.splice(bulletList.indexOf(e.currentTarget), 1);
+		}
+		
+		
+		function addEnemy(isMelee:Boolean, xLocation:int, yLocation:int, passCord:Array):void{
+			var enemy;
+			if(isMelee){
+				enemy = new Melee(xLocation, yLocation);
+			} else{
+				//Spawn ranged enemy here
+				enemy = new Ranged(xLocation, yLocation, passCord);
+			}
+			back.addChild(enemy);
+			
+			enemy.addEventListener(Event.REMOVED, enemyRemoved);
+			enemyList.push(enemy);
+		}
+		function enemyRemoved(e:Event):void{
+			e.currentTarget.removeEventListener(Event.REMOVED, enemyRemoved);
+			enemyList.splice(enemyList.indexOf(e.currentTarget), 1);
+		}
+		
+		
+		
+		
+		function SpawnEnemies():void{
+			switch(CurrLev){
+				case 1:
+					//addEnemy(true, player.x - scrollX, player.y - scrollY);
+					addEnemy(true, 447.7, 307.1, null);
+					addEnemy(false, -549.45, 3.8, [914, 250, 1373, 350]);
+					addEnemy(true, 176, -263.5, null);
+					break;
+			}
+		}
+		function KillEnemies():void{
+			if (enemyList.length > 0){
+				for (var i:int = 0; i < enemyList.length; i++) {
+					
+						enemyList[i].removeSelf(999);
+				}
 			}
 		}
 		
 		//Code To Be Executed Each Frame
 		//==============================
 		public function FrameCode(e:Event):void{
+			var HealthAtBeg:Number = HP;
+			
+			
+			
+				
 			
 			var OnLad:Boolean = false;			
 			
@@ -174,26 +260,20 @@
 			if(leftPressed){
 				xSpeed -= speedConstant;
 				player.Figure.scaleX = -1; // And turn your character in that direction
+				LastWasLeft = true;
 			} else if(rightPressed){
 				xSpeed += speedConstant;
 				player.Figure.scaleX = 1; // Ditto
+				LastWasLeft = false;
+			} else if(LastWasLeft){
+				if(player.Figure){
+					player.Figure.scaleX = -1;
+				}
+				
 			}
 			
-			//Old Code - Might come in handy, though
-			/*if(upPressed){
-				ySpeed -= speedConstant;
-			} else if(downPressed){
-				ySpeed += speedConstant;
-			}*/
-			if(downPressed){
-				//trace("Down Pressed");
-				if(player.hitTestObject(back.Exit)){
-					//trace("Level Complete!");
-					//LevelComplete();
-					//gotoAndStop(1, "Level Select");
-					//LEVEL COMPLETE CODE TO GO HERE
-					}
-			}
+			
+			
 			
 			
 			//Collision Detection - If bumping, nudge (bounce) in opposite direction
@@ -217,7 +297,6 @@
 			
 			
 			if(Bumping[1]){ //If the player is on the ground
-				//trace("On Ground");
 				upReleasedInAir = false;
 				doubleJumpReady = true;
 				if(ySpeed > 0){
@@ -268,6 +347,32 @@
 			}
 			
 			
+			if(player.Figure){
+				
+			
+			//Additional code dealing with contact damage
+			if (enemyList.length > 0){
+				for (var l:int = 0; l < enemyList.length; l++) {
+					if (player.DamageHitBox.hitTestObject(enemyList[l].HitBox) ){
+						trace("Player and Enemy are colliding");
+						HP -= 2;
+						
+						if(player.Figure.scaleX == -1){
+							xSpeed += 2*speedConstant;
+						} else if(player.Figure.scaleX == 1){
+							xSpeed -= 2*speedConstant;
+						}
+					}
+					if(enemyList[l].IsMelee == true){
+						if(player.DamageHitBox.hitTestObject(enemyList[l].LHitBox)){
+							HP -= 0.1;
+						} else if(player.DamageHitBox.hitTestObject(enemyList[l].RHitBox)){
+							HP -= 0.1;
+						}
+					}
+				}
+			}
+			}
 			
 			//Movement Code
 			if(xSpeed > maxSpeedConstant){
@@ -295,17 +400,100 @@
 			
 			//Player Animation Code
 			if(AnimationState != "Complete"){
-				if((leftPressed||rightPressed||xSpeed>speedConstant||xSpeed<speedConstant*-1)&&Bumping[1]){
+				if((leftPressed || rightPressed || xSpeed > speedConstant || xSpeed < speedConstant*-1) && Bumping[1]){
 					AnimationState = "Running";
+				} else if(attackPressed){
+					
+					if(AnimationTimer < 20){
+						AnimationState = "Melee 1";
+					} else{
+						AnimationState = "Melee 2";
+					}
+					
+					if(AnimationTimer < 35){
+						AnimationTimer++;
+					} else{
+						AnimationTimer = 0;
+					}
+					
+					
+					
+					//Melee version of same code that deals with enemies
+					if (enemyList.length > 0 && ((player.currentLabel == "Melee 1") || (player.currentLabel == "Melee 2"))){
+						for (var i:int = 0; i < enemyList.length; i++) {
+							if (player.HitBox.hitTestObject(enemyList[i]) ){
+								//trace("Player Attack and Enemy are colliding");
+								enemyList[i].removeSelf(3);
+							}	
+						}
+					}
+					
+					
+				} else if(HealthAtBeg != HP){
+					AnimationState = "Hurt";
 				} else if(Bumping[1]){
 					AnimationState = "Idle";
-				} else {
+				} else{
 					AnimationState = "Jumping";
 				}
 			}
 			
 			//Updates the player animation
 			UpdatePlayer();
+			
+			
+			
+			
+			
+			//Deals with enemies
+			if (enemyList.length > 0){
+				for (var k:int = 0; k < enemyList.length; k++) {
+					if (bulletList.length > 0) {
+						for (var j:int = 0; j < bulletList.length; j++) {
+							if ( enemyList[k].hitTestObject(bulletList[j]) ){
+								trace("Bullet and Enemy are colliding");
+								enemyList[k].removeSelf(40);
+								bulletList[j].removeSelf();
+							}
+			
+							// enemyList[i] will give you the current enemy
+							// bulletList[j] will give you the current bullet
+							// this will check all combinations of bullets and enemies
+							// and see if any are colliding
+						}
+					}
+				}
+			}
+			
+			
+			
+			
+			
+			//Completing the level
+			if(downPressed){
+				//trace("Down Pressed");
+				if(player.hitTestObject(back.Exit)){
+					//LEVEL COMPLETE CODE TO GO HERE
+					//gotoAndStop(1, "Level Select");
+					//stage.removeEventListener(Event.ENTER_FRAME, FrameCode);
+					LevelComplete(true);
+				}
+			}
+			//trace(HP);
+			
+			HBar.HBar.scaleX = HP / 100;
+			if(HealthAtBeg != HP){
+				IsTakeDam.alpha = 1;
+			} else{
+				IsTakeDam.alpha = 0;
+			}
+			if(HP <= 0){
+				//gotoAndStop(1, "Death");
+				LevelComplete(false);
+			}
+			
+			//trace(back.x);
+			//trace(back.y);
 			
 		}
 		
@@ -361,6 +549,44 @@
 			}
 			
 			return ReturnArray;
+		}
+		
+		
+		
+		
+		
+		
+		
+		//=====================
+		//LEVEL COMPLETE SHTUFF
+		//=====================
+		public function LevelComplete(isWin:Boolean):void{
+			KillEnemies();
+			stage.removeEventListener(Event.ENTER_FRAME, FrameCode);
+			RemoveEvents();
+			
+			
+			
+			if(isWin){
+				AnimationState = "Complete";
+				UpdatePlayer();
+				
+				trace("Level Complete!");
+				
+				HomeTimer = setInterval(ReturnToLevels, 1000);
+				
+				
+			} else{
+				HP = 100;
+				gotoAndStop(1, "Death");
+			}
+			
+			
+		}
+		public function ReturnToLevels():void{
+			//stage.removeEventListener(Event.ENTER_FRAME, FrameCode);
+			clearInterval(HomeTimer);
+			gotoAndStop(1, "Level Select");
 		}
 		
 	}
