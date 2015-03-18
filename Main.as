@@ -5,6 +5,7 @@
 	import com.coreyoneil.collision.CollisionGroup;
 	import flash.ui.Keyboard;
 	import flash.events.KeyboardEvent;
+	import flash.media.SoundMixer;
 	
 	public class Main extends MovieClip {
 		
@@ -48,7 +49,7 @@
 		var HomeTimer;
 		
 		//Sprite Arrays
-		var bulletList:Array = new Array();
+		public static var bulletList:Array = new Array();
 		var enemyList:Array = new Array();
 		
 		
@@ -460,6 +461,13 @@
 							// bulletList[j] will give you the current bullet
 							// this will check all combinations of bullets and enemies
 							// and see if any are colliding
+							
+							if(k == 0){
+								if(bulletList[j].hitTestObject(player)){
+									HP = HP - 20;
+									bulletList[j].removeSelf();
+								}
+							}
 						}
 					}
 				}
@@ -588,6 +596,17 @@
 			clearInterval(HomeTimer);
 			gotoAndStop(1, "Level Select");
 		}
+		
+		
+		
+		
+		public function KillSounds():void{
+			SoundMixer.stopAll();
+		}
+		//OOP Encapsulation
+		/*public static function getBulletArray():Array{
+			return bulletList;
+		}*/
 		
 	}
 	

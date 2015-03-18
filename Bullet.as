@@ -12,14 +12,16 @@
 			
 			if(playerDirection == "left"){
 				speed = -20;
-				x = playerX;
+				x = playerX - 70;
 			} else if(playerDirection == "right"){
 				speed = 20;
-				x = playerX; //+
+				x = playerX + 70; //+
 			}
 			y = playerY - 35;
 
 			initialX = x;
+			
+			//(stage.getChildByName("back") as MovieClip).addChild(this);
 			
 			addEventListener(Event.ENTER_FRAME, loop);
 		}
