@@ -12,10 +12,10 @@
 			
 			if(playerDirection == "left"){
 				speed = -20;
-				x = playerX - 70;
+				x = playerX;
 			} else if(playerDirection == "right"){
 				speed = 20;
-				x = playerX + 70; //+
+				x = playerX; //+
 			}
 			y = playerY - 35;
 

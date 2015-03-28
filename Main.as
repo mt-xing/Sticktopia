@@ -6,6 +6,7 @@
 	import flash.ui.Keyboard;
 	import flash.events.KeyboardEvent;
 	import flash.media.SoundMixer;
+	import flash.display.InteractiveObject;
 	
 	public class Main extends MovieClip {
 		
@@ -47,10 +48,14 @@
 		var LastWasLeft:Boolean = false;
 		var AnimationTimer:Number = 0;
 		var HomeTimer;
+		//Various Timer Iterators
+		var FiredGun:int = 0;
+		var KickedGuy:int = 0;
 		
 		//Sprite Arrays
 		public static var bulletList:Array = new Array();
-		var enemyList:Array = new Array();
+		public static var enemyBulletList:Array = new Array();
+		public static var enemyList:Array = new Array();
 		
 		
 		var CurrLev:int;
@@ -81,12 +86,18 @@
 				//If so, cleans up and moves on
 				removeEventListener(Event.ENTER_FRAME, Preload)
 				gotoAndStop(2, "Loader");
+				stage.addEventListener(KeyboardEvent.KEY_UP, startSkip);
 				
 			} else{
 				//Otherwise, updates the display
 				Preloader.Fill.scaleX = LoadedBytes/TotalBytes;
 				Preloader.PercentText.text = Math.round(LoadedBytes/TotalBytes*100) + "%";
 			}
+		}
+		
+		public function startSkip(e:Event):void{
+				gotoAndStop("Main Menu", "Main Menu");
+				stage.removeEventListener(KeyboardEvent.KEY_UP, startSkip);
 		}
 		
 		
@@ -178,6 +189,7 @@
 			} else if(e.keyCode == Keyboard.C){
 				fireBullet();
 			} else if(e.keyCode == Keyboard.SPACE){
+				KickedGuy = 0;
 				attackPressed = false;
 			}
 		}
@@ -195,6 +207,10 @@
 			back.addChild(bullet);
 			bulletList.push(bullet);
 			bullet.addEventListener(Event.REMOVED, bulletRemoved);
+			
+			AnimationState = "Gun";
+			UpdatePlayer();
+			FiredGun = 6;
 		}
 		function bulletRemoved(e:Event):void{
 			e.currentTarget.removeEventListener(Event.REMOVED, bulletRemoved);
@@ -217,6 +233,7 @@
 		}
 		function enemyRemoved(e:Event):void{
 			e.currentTarget.removeEventListener(Event.REMOVED, enemyRemoved);
+			trace("ABOUT TO KILL " + enemyList.indexOf(e.currentTarget));
 			enemyList.splice(enemyList.indexOf(e.currentTarget), 1);
 		}
 		
@@ -235,9 +252,10 @@
 		}
 		function KillEnemies():void{
 			if (enemyList.length > 0){
-				for (var i:int = 0; i < enemyList.length; i++) {
-					
-						enemyList[i].removeSelf(999);
+				//trace(enemyList.length);
+				for (var i:int = enemyList.length - 1; i >= 0; i--) {
+					trace("DIE " + i + " " + enemyList[i]);					
+					enemyList[i].actuallyDead();
 				}
 			}
 		}
@@ -401,9 +419,8 @@
 			
 			//Player Animation Code
 			if(AnimationState != "Complete"){
-				if((leftPressed || rightPressed || xSpeed > speedConstant || xSpeed < speedConstant*-1) && Bumping[1]){
-					AnimationState = "Running";
-				} else if(attackPressed){
+				//trace(AnimationTimer);
+				if(attackPressed || (AnimationTimer < 10 && AnimationTimer > 0) || (AnimationTimer > 20 && AnimationTimer < 40)){
 					
 					if(AnimationTimer < 20){
 						AnimationState = "Melee 1";
@@ -411,7 +428,7 @@
 						AnimationState = "Melee 2";
 					}
 					
-					if(AnimationTimer < 35){
+					if(AnimationTimer < 40){
 						AnimationTimer++;
 					} else{
 						AnimationTimer = 0;
@@ -424,12 +441,27 @@
 						for (var i:int = 0; i < enemyList.length; i++) {
 							if (player.HitBox.hitTestObject(enemyList[i]) ){
 								//trace("Player Attack and Enemy are colliding");
-								enemyList[i].removeSelf(3);
-							}	
+								
+								if(KickedGuy == 0){
+									enemyList[i].removeSelf(10);
+								}
+								
+							}
+							
 						}
+						
+					}
+					if(KickedGuy == 0){
+						KickedGuy = 20;
+						//trace("Reset Kick");
+					} else{
+						KickedGuy--;
+						//trace("Kick--");
 					}
 					
 					
+				} else if((leftPressed || rightPressed || xSpeed > speedConstant || xSpeed < speedConstant*-1) && Bumping[1]){
+					AnimationState = "Running";
 				} else if(HealthAtBeg != HP){
 					AnimationState = "Hurt";
 				} else if(Bumping[1]){
@@ -437,6 +469,20 @@
 				} else{
 					AnimationState = "Jumping";
 				}
+			}
+			
+			
+			if((AnimationTimer != 0 && AnimationTimer != 20) && !(attackPressed || (AnimationTimer < 10 && AnimationTimer > 0) || (AnimationTimer > 20 && AnimationTimer < 40))){
+				if(AnimationTimer > 0 && AnimationTimer < 20){
+					trace("2");
+					AnimationTimer = 20;
+				} else{
+					trace("1");
+					AnimationTimer = 0;
+					
+				}
+				
+				
 			}
 			
 			//Updates the player animation
@@ -456,19 +502,16 @@
 								enemyList[k].removeSelf(40);
 								bulletList[j].removeSelf();
 							}
-			
-							// enemyList[i] will give you the current enemy
-							// bulletList[j] will give you the current bullet
-							// this will check all combinations of bullets and enemies
-							// and see if any are colliding
-							
-							if(k == 0){
-								if(bulletList[j].hitTestObject(player)){
-									HP = HP - 20;
-									bulletList[j].removeSelf();
-								}
-							}
 						}
+					}
+				}
+			}
+			//Deals with the enemy hitting you
+			if(enemyBulletList.length > 0){
+				for(var m:int = 0; m < enemyBulletList.length; m++){
+					if(enemyBulletList[m].hitTestObject(player)){
+						HP = HP - 20;
+						enemyBulletList[m].removeSelf();
 					}
 				}
 			}
@@ -507,8 +550,13 @@
 		
 		public function UpdatePlayer():void{
 			//trace(AnimationState);
+			if(FiredGun > 0){
+				FiredGun--;
+				return;
+			}
 			if(player.currentLabel != AnimationState){
 				player.gotoAndStop(AnimationState);
+				player.Figure.gotoAndPlay(1);
 			}
 		}
 		

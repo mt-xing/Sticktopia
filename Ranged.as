@@ -26,6 +26,11 @@
 		
 		public function loop(e:Event):void{
 			
+			if(!(root as DisplayObjectContainer).getChildByName("back")){
+				trace("No Root");
+				return;
+			}
+			
 			if(rangeCord[0] < (root as DisplayObjectContainer).getChildByName("back").x &&
 				rangeCord[2] > (root as DisplayObjectContainer).getChildByName("back").x &&
 				rangeCord[1] < (root as DisplayObjectContainer).getChildByName("back").y &&
@@ -56,6 +61,7 @@
 		public function actuallyDead():void{
 			trace("Ranged Enemy Removed");
 			removeEventListener(Event.ENTER_FRAME, loop);
+			//trace("Loop removed");
 			this.parent.removeChild(this);
 		}
 		
@@ -66,7 +72,7 @@
 			} else if(player.Figure.scaleX > 0){
 				playerDirection = "right";
 			}*/
-			var bullet:Bullet = new Bullet(x + 10, y + 50, "right");
+			var bullet:Bullet = new Bullet(x + 80, y + 50, "right");
 			
 			var stageBackground:MovieClip = ((root as MovieClip).getChildByName("back") as MovieClip);
 			//trace(stageBackground.x);
@@ -74,12 +80,12 @@
 			//http://stackoverflow.com/questions/26924447/object-on-stage-cannot-be-accessed-from-external-class
 			stageBackground.addChild(bullet);
 			
-			Main.bulletList.push(bullet);
+			Main.enemyBulletList.push(bullet);
 			bullet.addEventListener(Event.REMOVED, bulletRemoved);
 		}
 		public function bulletRemoved(e:Event):void{
 			e.currentTarget.removeEventListener(Event.REMOVED, bulletRemoved);
-			Main.bulletList.splice(Main.bulletList.indexOf(e.currentTarget), 1);
+			Main.enemyBulletList.splice(Main.bulletList.indexOf(e.currentTarget), 1);
 		}
 	}
 	
