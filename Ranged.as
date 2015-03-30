@@ -8,18 +8,20 @@
 	public class Ranged extends MovieClip {
 		
 		var Health:Number = 100;
-		var IsMelee:Boolean = false;
-		
-		var rangeCord:Array = new Array();
+		var IsMelee:Boolean = false;		
+		//var rangeCord:Array = new Array();
 		
 		var lastFireTime:Number = 0;
+		//var MidXCord:int = 0;
+		//var MidYCord:int = Math.floor((rangeCord[1] + rangeCord[3]) / 2);
 		
-		public function Ranged(xLocation:int, yLocation:int, possCore:Array) {
+		public function Ranged(xLocation:int, yLocation:int/*, possCore:Array*/) {
 			// constructor code
 			x = xLocation;
 			y = yLocation;
 			
-			rangeCord = possCore;
+			//rangeCord = possCore;
+			//MidXCord = Math.floor((rangeCord[0] + rangeCord[2]) / 2);
 			
 			addEventListener(Event.ENTER_FRAME, loop);
 		}
@@ -31,14 +33,24 @@
 				return;
 			}
 			
-			if(rangeCord[0] < (root as DisplayObjectContainer).getChildByName("back").x &&
+			/*if(rangeCord[0] < (root as DisplayObjectContainer).getChildByName("back").x &&
 				rangeCord[2] > (root as DisplayObjectContainer).getChildByName("back").x &&
 				rangeCord[1] < (root as DisplayObjectContainer).getChildByName("back").y &&
-				rangeCord[3] > (root as DisplayObjectContainer).getChildByName("back").y){
+				rangeCord[3] > (root as DisplayObjectContainer).getChildByName("back").y){*/
+			if((root as DisplayObjectContainer).getChildByName("player").hitTestObject(this.LRangeBox) || 
+				(root as DisplayObjectContainer).getChildByName("player").hitTestObject(this.RRangeBox)){
 				//trace("Player in Range");
 				//Player in Range
 				if(lastFireTime <= 0){
-					fireBullet();
+					
+					if((root as DisplayObjectContainer).getChildByName("player").hitTestObject(this.LRangeBox)){
+						fireBullet(false);
+					} else{
+						fireBullet(true);
+					}
+					
+					
+					
 					lastFireTime = 30;
 				} else{
 					lastFireTime--;
@@ -65,14 +77,16 @@
 			this.parent.removeChild(this);
 		}
 		
-		public function fireBullet():void {
-			/*var playerDirection:String;
-			if(player.Figure.scaleX < 0){
-				playerDirection = "left";
-			} else if(player.Figure.scaleX > 0){
-				playerDirection = "right";
-			}*/
-			var bullet:Bullet = new Bullet(x + 80, y + 50, "right");
+		public function fireBullet(IsRight:Boolean):void {
+			//trace(IsRight);
+			var bullet:Bullet;
+			
+			if(IsRight){
+				bullet = new Bullet(x + 80, y + 50, "right");
+			} else{
+				bullet = new Bullet(x - 80, y + 50, "left");
+			}
+			
 			
 			var stageBackground:MovieClip = ((root as MovieClip).getChildByName("back") as MovieClip);
 			//trace(stageBackground.x);
