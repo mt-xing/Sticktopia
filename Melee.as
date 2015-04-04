@@ -4,7 +4,7 @@
 	
 	public class Melee extends MovieClip{
 		
-		var Health:Number = 100;
+		public var Health:Number = 100;
 		var IsMelee:Boolean = true;
 		var IsFacingRight:Boolean = true;
 		var DistanceMoved:int = 0;
@@ -18,8 +18,12 @@
 			x = xLocation;
 			y = yLocation;
 			
+			if(Math.random() < 0.5){
+				IsFacingRight = false;
+			}
 			
 			addEventListener(Event.ENTER_FRAME, loop);
+			//stop();
 		}
 		
 		public function loop(e:Event):void{
@@ -28,9 +32,11 @@
 				if(IsFacingRight){
 					x = x + 2;
 					DistanceMoved++;
+					Figure.scaleX = 1;
 				} else{
 					x = x - 2;
 					DistanceMoved--;
+					Figure.scaleX = -1;
 				}	
 			} else{
 				//If health has, stop moving, then, after about 10 frames, reset the health tracker so it can move again
@@ -58,7 +64,7 @@
 		public function removeSelf(hp:Number):void{
 			Health -= hp;
 			HPBar.scaleX = (Health / 100);
-			
+			//trace("Taking Damage: " + hp);
 			if(Health <= 0){
 				actuallyDead();
 			}

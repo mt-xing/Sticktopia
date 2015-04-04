@@ -30,6 +30,7 @@
 		const gravityConstant:Number = 5;
 		
 		var HP:Number = 100;
+		var Lives:Number = 1;
 		
 		//Speed
 		var xSpeed:Number = 10;
@@ -44,6 +45,7 @@
 		//const friction:Number = 0.6;
 		
 		
+		public static var Muted:Boolean = false;
 		
 		var AnimationState:String = "Idle";
 		var LastWasLeft:Boolean = false;
@@ -55,6 +57,8 @@
 		var FiredGun:int = 0;
 		var KickedGuy:int = 0;
 		var WasHit:int = -1;
+		var LastSplash:int = 0;
+		var LastFifty:int = 0;
 		
 		//Sprite Arrays
 		public static var bulletList:Array = new Array();
@@ -62,7 +66,7 @@
 		public static var enemyList:Array = new Array();
 		
 		
-		var CurrLev:int;
+		public static var CurrLev:int;
 		
 		/*
 		==============
@@ -99,13 +103,17 @@
 			}
 		}
 		
-		public function startSkip(e:Event):void{
+		public function startSkip(e:KeyboardEvent):void{
+			if(e.keyCode != Keyboard.ENTER){
+				return;
+			}
 			gotoAndStop("Main Menu", "Main Menu");
 			
 			//trace("StartSkip Removed");
 		}
 		public function creditsSkip(e:Event):void{
 			stage.removeEventListener(KeyboardEvent.KEY_UP, creditsSkip);
+			PlaySounds(0);
 			gotoAndStop("Main Menu", "Main Menu");
 		}
 		
@@ -122,6 +130,30 @@
 			
 			HP = 100;
 			IgnoreAmend = false;
+			LifeLost.alpha = 0;
+			LComp.alpha = 0;
+			
+			CurrLev = LevelNum;			
+			
+			if(CurrLev >= 8){
+				Lives = 2;
+				LivesInd.alpha = 1;
+				LivesInd.Life2.alpha = 1;
+			} else{
+				LivesInd.alpha = 0;
+			}
+			if(CurrLev < 6){
+				VBar.alpha = 0;
+			} else{
+				VBar.HBar.scaleX = 1;
+				LastSplash = 0;
+			}
+			if(CurrLev < 9){
+				BBar.alpha = 0;
+			} else{
+				BBar.HBar.scaleX = 1;
+				LastFifty = 0;
+			}
 			
 			stop();
 			trace("Class Code For Level " + LevelNum + " Initiated.");
@@ -131,7 +163,7 @@
 			//	AddInd(LevelNum);
 			//}
 			
-			CurrLev = LevelNum;
+			
 			
 			AnimationState = "Idle";
 			UpdatePlayer();
@@ -150,10 +182,18 @@
 			//Starting all the event listeners
 			AddEvents();
 			
+			if(LevelNum == 1){
+				PlaySounds(2);
+			} else{
+				PlaySounds(3);
+			}
 			
 			trace("Event Listeners Initialized");
 			stage.addEventListener(Event.ENTER_FRAME, FrameCode);
+			stage.addEventListener(KeyboardEvent.KEY_UP, muteHandler);
 			SpawnEnemies();
+			
+			
 		}
 		
 		public function AddEvents(){
@@ -171,8 +211,29 @@
 			stage.removeEventListener(KeyboardEvent.KEY_DOWN, keyDownHandler);
 			stage.removeEventListener(KeyboardEvent.KEY_UP, keyUpHandler);
 			trace("No Longer Listening for Arrow Keys");
+			leftPressed = false;
+			rightPressed = false;
+			upPressed = false;
+			downPressed = false;
+			attackPressed = false;
 		}
 		
+		public function muteHandler(e:KeyboardEvent){
+			if(e.keyCode != Keyboard.M){
+				return;
+			}
+			if(Muted){
+				if(CurrLev == 1){
+					PlaySounds(2);
+				} else{
+					PlaySounds(3);
+				}
+				Muted = false;
+			} else{
+				Muted = true;
+				KillSounds();
+			}
+		}
 		
 		
 		
@@ -190,9 +251,12 @@
 			} else if(e.keyCode == Keyboard.SPACE){
 			//	trace("Attack");
 				attackPressed = true;
+			} else if(e.keyCode == Keyboard.V){
+				splashMove();
+			} else if(e.keyCode == Keyboard.B){
+				fiftyMove();
 			}
 		}
-		
 		public function keyUpHandler(e:KeyboardEvent):void{
 			if(e.keyCode == Keyboard.A || e.keyCode == Keyboard.LEFT){
 				leftPressed = false;
@@ -202,17 +266,20 @@
 				upPressed = false;
 			} else if(e.keyCode == Keyboard.S || e.keyCode == Keyboard.DOWN){
 				downPressed = false;
-			} else if(e.keyCode == Keyboard.C){
-				fireBullet();
 			} else if(e.keyCode == Keyboard.SPACE){
 				KickedGuy = 0;
 				attackPressed = false;
+			} else if(e.keyCode == Keyboard.C){
+				fireBullet();
 			}
 		}
 		
 		
 		
 		function fireBullet():void {
+			if(CurrLev < 2){
+				return;
+			}
 			var playerDirection:String;
 			if(player.Figure.scaleX < 0){
 				playerDirection = "left";
@@ -233,6 +300,50 @@
 			bulletList.splice(bulletList.indexOf(e.currentTarget), 1);
 		}
 		
+		function splashMove():void{
+			if(LastSplash > 0 || CurrLev < 6){
+				return;
+			}
+			var NewSM = new Splash();
+			back.addChild(NewSM);
+			NewSM.x = player.x - scrollX;
+			NewSM.y = player.y - scrollY;
+			
+			if (enemyList.length > 0){
+				for (var k:int = 0; k < enemyList.length; k++) {
+					if (enemyList[k].AttackBound.hitTestObject(NewSM)){
+						trace("Splash and Enemy are colliding");
+						enemyList[k].removeSelf(70);
+					}
+				}
+			}
+			LastSplash = 220;
+			VBar.HBar.scaleX = 0;
+		}
+		function fiftyMove():void{
+			if(LastFifty > 0 || CurrLev < 9){
+				return;
+			}
+			var NewFM = new FifMove();
+			back.addChild(NewFM);
+			NewFM.x = player.x - scrollX;
+			NewFM.y = player.y - scrollY;
+			//trace(Math.random());
+			if (enemyList.length > 0){
+				for (var k:int = 0; k < enemyList.length; k++) {
+					if (enemyList[k].AttackBound.hitTestObject(NewFM)){
+						trace("Fifty and Enemy are colliding");
+						//enemyList[k].removeSelf(30);
+						if(Math.random() < 0.8){
+							enemyList[k].removeSelf(9999);
+						} else{
+							enemyList[k].removeSelf(1);
+						}
+					}
+				}
+			}
+			LastFifty = 300;
+		}
 		
 		function addEnemy(isMelee:Boolean, xLocation:int, yLocation:int/*, passCord:Array*/):void{
 			var enemy;
@@ -248,6 +359,9 @@
 			enemyList.push(enemy);
 		}
 		function enemyRemoved(e:Event):void{
+			if(e.currentTarget.Health > 0){
+				return;
+			}
 			e.currentTarget.removeEventListener(Event.REMOVED, enemyRemoved);
 			trace("ABOUT TO KILL " + enemyList.indexOf(e.currentTarget));
 			enemyList.splice(enemyList.indexOf(e.currentTarget), 1);
@@ -263,7 +377,7 @@
 					//addEnemy(true, 447.7, 307.1, null);
 					//addEnemy(false, -549.45, 3.8, [914, 250, 1373, 350]);
 					//addEnemy(true, 176, -263.5, null);
-					addEnemy(true, -3255.4, -23);
+					//First Enemy That Got KickedaddEnemy(true, -3255.4, -23);
 					addEnemy(true, -2433.15, 588.3);
 					addEnemy(true, -1237.95, 310.15);
 					addEnemy(true, -534.9, -725.65);
@@ -1259,7 +1373,7 @@
 				//trace(enemyList.length);
 				for (var i:int = enemyList.length - 1; i >= 0; i--) {
 					trace("DIE " + i + " " + enemyList[i]);					
-					enemyList[i].actuallyDead();
+					enemyList[i].removeSelf(99999);
 				}
 			}
 		}
@@ -1270,7 +1384,16 @@
 			var HealthAtBeg:Number = HP;
 			
 			
+			if(LastSplash > 0){
+				LastSplash--;
+				VBar.HBar.scaleX = (220 - LastSplash) / 220;
+			}
 			
+			if(LastFifty > 0){
+				//trace("LFF");
+				LastFifty--;
+				BBar.HBar.scaleX = (300 - LastFifty) / 300;
+			}
 				
 			
 			var OnLad:Boolean = false;			
@@ -1381,14 +1504,13 @@
 						MaxRegens = true;
 					} else{
 						if(MovieClip(back.getChildByName("Regen" + RegI)).hitTestObject(player.LadDec)){
-							/*if(upPressed){
-								ySpeed = -20;
-							} else if(downPressed){
-								ySpeed = 20;
-							}
-							OnLad = true;*/
+							
 							if(HP < 99){
-								HP += 1;
+								if(CurrLev == 5 && back.getChildByName("Regen3").hitTestObject(player.LadDec)){
+									HP += 1.8; //Cheap nerf to make Level 5 beatable
+									trace("Lev5 Hack");
+								}
+								HP += 0.2;
 							} else if(HP < 100){
 								HP = 100;
 							}
@@ -1404,13 +1526,23 @@
 				//HACK to fix something broken... IDK what	
 				
 				
+				/*
+				MELEE DAMAGE CODE
+				=================
+				*/
+				
 				//Additional code dealing with contact damage
 				if (enemyList.length > 0){
 					for (var l:int = 0; l < enemyList.length; l++) {
 						if (player.DamageHitBox.hitTestObject(enemyList[l].HitBox) ){
 							//You actually walking into the enemy
 							trace("Player and Enemy are colliding");
-							HP -= 2;
+							if(CurrLev < 10){
+								HP -= 2;
+							} else{
+								HP -= 1;
+							}
+							
 							
 							if(player.Figure.scaleX == -1){
 								xSpeed += 2*speedConstant;
@@ -1422,15 +1554,30 @@
 							//You coming in range of a melee enemy hitting you
 							if(player.DamageHitBox.hitTestObject(enemyList[l].LHitBox) || player.DamageHitBox.hitTestObject(enemyList[l].RHitBox)){
 								//HP -= 0.1;
+								enemyList[l].gotoAndStop(2);
 								if(enemyList[l].getJustAttacked() == 0){
-									HP -= 1;
-									enemyList[l].setJustAttacked(10);
-									enemyList[l].setPrevHPCount(10);
-									//WasHit = 3;
+									if(CurrLev < 10){
+										HP -= 1;
+									} else{
+										HP -= 0.8;
+									}
+									
+									if(CurrLev < 4){
+										enemyList[l].setJustAttacked(10);
+										enemyList[l].setPrevHPCount(10);
+									} else{
+										enemyList[l].setJustAttacked(20);
+										enemyList[l].setPrevHPCount(20);
+									}
+									if(player.DamageHitBox.hitTestObject(enemyList[l].RHitBox)){
+										enemyList[l].Figure.scaleX = 1;
+									} else{
+										enemyList[l].Figure.scaleX = -1;
+									}
 								}
-							}/* else if(player.DamageHitBox.hitTestObject(enemyList[l].RHitBox)){
-								HP -= 0.1;
-							}*/
+							} else{
+								enemyList[l].gotoAndStop(1);
+							}
 						}
 					}
 				}
@@ -1455,22 +1602,17 @@
 			//Updates the speed variables
 			scrollX -= xSpeed;
 			scrollY -= ySpeed;
+			
 			//And finally actually scrolls the background.
 			back.x = scrollX;
 			back.y = scrollY;
+			//Parallax FTW!
+			back.back.x = scrollX * 0.1 - 500;
+			back.back.y = scrollY * -0.1;
 			
 			
 			//Player Animation Code
 			if(AnimationState != "Complete"){
-				//trace(AnimationTimer);/*
-				/*
-				if(WasHit == 0){
-				WasHit--;
-				AddEvents();
-			} else if(WasHit > 0){
-				WasHit--;
-			}
-				*/
 				if(WasHit > -1){
 					AnimationState = "Hurt";
 					if(WasHit == 0){
@@ -1497,8 +1639,6 @@
 					if (enemyList.length > 0 && ((player.currentLabel == "Melee 1") || (player.currentLabel == "Melee 2"))){
 						for (var i:int = 0; i < enemyList.length; i++) {
 							if (player.HitBox.hitTestObject(enemyList[i].AttackBound) ){
-								//trace("Player Attack and Enemy are colliding");
-								
 								if(KickedGuy == 0){
 									enemyList[i].removeSelf(10);
 								}
@@ -1567,8 +1707,17 @@
 			if(enemyBulletList.length > 0){
 				for(var m:int = 0; m < enemyBulletList.length; m++){
 					if(enemyBulletList[m].hitTestObject(player)){
-						HP = HP - 10;
-						WasHit = 10;
+						if(CurrLev < 10){
+							HP = HP - 10;
+						} else{
+							HP = HP - 8;
+						}
+						
+						if(CurrLev < 3){
+							WasHit = 10;
+						} else{
+							WasHit = 5;
+						}
 						RemoveEvents();
 						enemyBulletList[m].removeSelf();
 					}
@@ -1588,7 +1737,12 @@
 					//stage.removeEventListener(Event.ENTER_FRAME, FrameCode);
 					LevelComplete(true);
 				} else if(player.hitTestObject(back.Amend) && !IgnoreAmend){
-					GetAmend();
+					if(CurrLev < 10){
+						GetAmend();
+					} else if(CurrLev == 10){
+						LevelComplete(true);
+					}
+					
 				}
 			//}
 			//trace(HP);
@@ -1679,32 +1833,64 @@
 		//LEVEL COMPLETE SHTUFF
 		//=====================
 		public function LevelComplete(isWin:Boolean):void{
-			KillEnemies();
+			
 			stage.removeEventListener(Event.ENTER_FRAME, FrameCode);
+			
+			stage.removeEventListener(KeyboardEvent.KEY_UP, muteHandler);
 			RemoveEvents();
 			
 			
 			
 			if(isWin){
+				LevelCompleteHelper();
 				AnimationState = "Complete";
 				UpdatePlayer();
 				
 				trace("Level Complete!");
 				
-				HomeTimer = setInterval(ReturnToLevels, 1000);
+				if(CurrLev != 10){
+					LComp.alpha = 1;
+					LComp.LComp1.text = "Level " + CurrLev + " Complete";
+					LComp.LComp2.text = "Level " + CurrLev + " Complete";
+					HomeTimer = setInterval(ReturnToLevels, 1000);
+				} else{
+					gotoAndPlay(1, "Credits");
+				}
+				
 				
 				
 			} else{
+				//You Died
 				HP = 100;
-				gotoAndStop(1, "Death");
+				if(Lives < 2){
+					LevelCompleteHelper();
+					gotoAndStop(1, "Death");
+				} else{
+					LifeLost.alpha = 1;
+					Lives--;
+					var my_timedProcess:Number = setTimeout(function(){
+							stage.addEventListener(Event.ENTER_FRAME, FrameCode);
+							AddEvents();
+							HP = 100;
+							LivesInd.Life2.alpha = 0;
+							LifeLost.alpha = 0;
+						}, 3000, "You just died");
+				}
+				
 			}
 			
 			
 		}
+		public function LevelCompleteHelper():void{
+			KillEnemies();
+			KillSounds();
+		}
 		public function ReturnToLevels():void{
 			//stage.removeEventListener(Event.ENTER_FRAME, FrameCode);
+			LComp.alpha = 0;
 			clearInterval(HomeTimer);
 			gotoAndStop(1, "Level Select");
+			PlaySounds(0);
 		}
 		public function GetAmend():void{
 			Amend = new AmendPopup();
@@ -1742,7 +1928,7 @@
 				case 5:
 					Amend.Title.text = "Amendment 9";
 					Amend.AmendText.text = "The enumeration in the Constitution, of certain rights, shall not be construed to deny or disparage others retained by the people.";
-					Amend.Explanation.text = "Your personal powers allow you to summon a magical vortex that magically and conviniently deals spash damage to all enemies around you\n\nPress v to activate special splash move; takes time to recharge";
+					Amend.Explanation.text = "Your personal powers allow you to summon a magical vortex that magically and conveniently deals splash damage to all enemies around you\n\nPress v to activate special splash move; takes time to recharge";
 					break;
 				case 6:
 					Amend.Title.text = "Amendment 3";
@@ -1751,18 +1937,21 @@
 					break;
 				case 7:
 					Amend.Title.text = "Amendment 6";
-					Amend.AmendText.text = "No soldier shall, in time of peace be quartered in any house, without the consent of the owner, nor in time of war, but in a manner to be prescribed by law.";
-					Amend.Explanation.text = "Enemies are prohibited from being quartered in your private dwellings, which means they can no longer enter safehouses\n\nEnemies are prohibited from entering safehouses";
+					Amend.AmendText.text = "In all criminal prosecutions, the accused shall enjoy the right to a speedy and public trial, by an impartial jury of the state and district wherein the crime shall have been committed, which district shall have been previously ascertained by law, and to be informed of the nature and cause of the accusation; to be confronted with the witnesses against him; to have compulsory process for obtaining witnesses in his favor, and to have the assistance of counsel for his defense.";
+					Amend.Explanation.text = "Through the powers of a speedy trial, you have been granted another go at your mission\n\nOne extra life per level.";
 					break;
 				case 8:
 					Amend.Title.text = "Amendment 7";
-					Amend.AmendText.text = "No soldier shall, in time of peace be quartered in any house, without the consent of the owner, nor in time of war, but in a manner to be prescribed by law.";
-					Amend.Explanation.text = "Enemies are prohibited from being quartered in your private dwellings, which means they can no longer enter safehouses\n\nEnemies are prohibited from entering safehouses";
+					Amend.AmendText.text = "In suits at common law, where the value in controversy shall exceed twenty dollars, the right of trial by jury shall be preserved, and no fact tried by a jury, shall be otherwise reexamined in any court of the United States, than according to the rules of the common law.";
+					Amend.Explanation.text = "You sue the enemies and, by a unanimous vote of the jury, you win the case, dealing a crippling blow\n\nPress b to activate special killing strike - instantly killing 50% of nearby enemies; takes time to recharge";
 					break;
 				case 9:
 					Amend.Title.text = "Amendment 8";
-					Amend.AmendText.text = "No soldier shall, in time of peace be quartered in any house, without the consent of the owner, nor in time of war, but in a manner to be prescribed by law.";
-					Amend.Explanation.text = "Enemies are prohibited from being quartered in your private dwellings, which means they can no longer enter safehouses\n\nEnemies are prohibited from entering safehouses";
+					Amend.AmendText.text = "Excessive bail shall not be required, nor excessive fines imposed, nor cruel and unusual punishments inflicted.";
+					Amend.Explanation.text = "Enemies can no longer deal cruel, excessive, and unusual punishments\n\nMinus 20% damage taken from all enemies";
+					break;
+				case 10:
+					//Add animation code here
 					break;
 			}
 			
@@ -1779,14 +1968,28 @@
 			/*
 			0 - Main Menu
 			1 - Credits
+			2 - Level 1
+			3 - Generic Level
 			*/
 			var MMSong:Sound;
-			if(e == 0){
-				MMSong = new MainMenuSong();
-			} else if(e == 1){
-			//	MMSong = new CreditsSong();
+			switch(e){
+				case 0:
+					MMSong = new MainMenuSong();
+					break;
+				case 1:
+					//MMSong = new CreditsSong();
+					break;
+				case 2:
+					MMSong = new Level1Song();
+					break;
+				case 3:
+					MMSong = new GenericSong();
+					break;
 			}
-			MMSong.play();
+			
+			
+			
+			MMSong.play(0, 999);
 		}
 		public function KillSounds():void{
 			SoundMixer.stopAll();

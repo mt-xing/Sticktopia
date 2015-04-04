@@ -7,15 +7,15 @@
 	
 	public class Ranged extends MovieClip {
 		
-		var Health:Number = 100;
+		public var Health:Number = 100;
 		var IsMelee:Boolean = false;		
 		//var rangeCord:Array = new Array();
 		
-		var lastFireTime:Number = 0;
+		var lastFireTime:Number = 30;
 		//var MidXCord:int = 0;
 		//var MidYCord:int = Math.floor((rangeCord[1] + rangeCord[3]) / 2);
 		
-		public function Ranged(xLocation:int, yLocation:int/*, possCore:Array*/) {
+		public function Ranged(xLocation:int, yLocation:int) {
 			// constructor code
 			x = xLocation;
 			y = yLocation;
@@ -41,6 +41,7 @@
 				(root as DisplayObjectContainer).getChildByName("player").hitTestObject(this.RRangeBox)){
 				//trace("Player in Range");
 				//Player in Range
+				gotoAndStop(2);
 				if(lastFireTime <= 0){
 					
 					if((root as DisplayObjectContainer).getChildByName("player").hitTestObject(this.LRangeBox)){
@@ -49,14 +50,27 @@
 						fireBullet(true);
 					}
 					
+					if(Main.CurrLev < 4){
+						lastFireTime = 30;
+					} else{
+						lastFireTime = 60;
+					}
 					
 					
-					lastFireTime = 30;
 				} else{
 					lastFireTime--;
 				}
 				
-			} 
+				if((root as DisplayObjectContainer).getChildByName("player").hitTestObject(this.LRangeBox)){
+					Figure.scaleX = -1;
+				} else if((root as DisplayObjectContainer).getChildByName("player").hitTestObject(this.RRangeBox)){
+					Figure.scaleX = 1;
+				}
+				
+			} else{
+				gotoAndStop(1);
+				Figure.scaleX = 1;
+			}
 		}
 		
 		public function removeSelf(hp:Number):void{
